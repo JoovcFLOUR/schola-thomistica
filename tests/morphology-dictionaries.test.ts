@@ -182,4 +182,21 @@ describe('Task 4: Morphological Analyzer & Multi-Dictionary Lexical Engine', () 
       expect(res.primaryLemma, `Wrong lemma for ${form}`).toBe(expectedLemma);
     }
   });
+
+  it('BUG-01 & BUG-05: defines qui/quod/quis as relative/interrogative pronouns (never "be able") and provides distinct Thomistic vs Classical meaning for intentio', () => {
+    for (const pron of ['qui', 'quae', 'quod', 'quis', 'quid']) {
+      const res = analyzeWord(pron);
+      expect(res.ecclesiasticalMeaning.toLowerCase()).not.toContain('be able');
+      for (const d of res.dictionaryEntries) {
+        expect(d.definition.toLowerCase(), `${d.source} for ${pron} had "be able"`).not.toMatch(/^be able\b/);
+      }
+    }
+
+    const intentio = analyzeWord('intentio');
+    expect(intentio.primaryLemma).toBe('intentio');
+    expect(intentio.ecclesiasticalMeaning.toLowerCase()).toContain('intention');
+    expect(intentio.ecclesiasticalMeaning.toLowerCase()).not.toContain('spasm');
+    expect(intentio.classicalMeaning).toBeTruthy();
+    expect(intentio.ecclesiasticalMeaning).not.toBe(intentio.classicalMeaning);
+  });
 });

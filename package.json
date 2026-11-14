@@ -1,6 +1,6 @@
 {
   "name": "schola-thomistica",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Interactive Latin-learning browser extension and offline archive for Corpus Thomisticum (Thomas Aquinas)",
   "type": "module",
   "scripts": {

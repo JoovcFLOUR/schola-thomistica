@@ -627,8 +627,20 @@ export function parseWordMorphology(rawWord: string): MorphologicalParse[] {
           if (cand === clean) {
             score += 10; // Exact orthographic match bonus
           }
-          // Demote archaic/poetic 2nd-person singular passive "-ere" (for "-eris") so 3rd-conj active infinitives ("tradere", "dicere") win
-          if (rule.pos === 'V' && rule.ending === 'ere' && rule.morph.includes('PASSIVE') && rule.morph.includes('2 S')) {
+          // Demote archaic/poetic 2nd-person singular passive "-are" / "-ere" / "-ire" (for "-aris" / "-eris" / "-iris") so active infinitives ("investigare", "tradere", "dicere", "audire") win (BUG-05)
+          if (
+            rule.pos === 'V' &&
+            (rule.ending === 'are' || rule.ending === 'ere' || rule.ending === 'ire') &&
+            rule.morph.includes('PASSIVE') &&
+            rule.morph.includes('2 S')
+          ) {
+            score -= 45;
+          }
+          if (rule.pos === 'V' && rule.morph.includes('ACTIVE') && rule.morph.includes('INF')) {
+            score += 20;
+          }
+          // Demote Locative case on plural/general nouns so Ablative/Dative Plural ("limitibus") wins (BUG-05)
+          if (decoded.case === 'Locative') {
             score -= 40;
           }
           // Demote rare Future Imperatives ("-to" / "-tote" / "-nto") so Perfect Passive Participles ("finito", "posito", "dicto") win

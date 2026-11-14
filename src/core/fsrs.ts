@@ -251,14 +251,13 @@ export function generatePhrasePumpSession(
     (e) => e.familiarity < 4 && new Date(e.fsrsCard.due).getTime() <= now.getTime()
   );
 
+  // BUG-08: When due cards exist, review only the due cards so the session count matches the due badge
+  // and non-due cards are not rescheduled early (fall back to non-known practice cards only when 0 cards are due).
   const pool =
-    options.dueOnly && dueEntries.length > 0
+    dueEntries.length > 0
       ? dueEntries
-      : dueEntries.length > 0
-      ? [
-          ...dueEntries,
-          ...entries.filter((e) => !dueEntries.includes(e) && e.familiarity < 4),
-        ]
+      : entries.filter((e) => e.familiarity < 4).length > 0
+      ? entries.filter((e) => e.familiarity < 4)
       : entries;
 
   const exercises: PhrasePumpExercise[] = [];

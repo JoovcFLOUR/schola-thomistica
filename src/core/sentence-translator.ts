@@ -533,11 +533,13 @@ export function translateLatinSentence(
   for (const rawTok of rawTokens) {
     const clean = cleanLatinString(rawTok);
     if (!clean) continue;
+    const displayWord =
+      rawTok.replace(/^[^A-Za-z\u00C0-\u017E]+|[^A-Za-z\u00C0-\u017E]+$/g, '') || rawTok;
 
     const preset = PROPER_NOUNS[clean] || SCHOLASTIC_TOKEN_GLOSSES[clean];
     if (preset) {
       interlinearGloss.push({
-        word: rawTok,
+        word: displayWord,
         lemma: preset.lemma,
         gloss: preset.gloss,
         morphShort: preset.morph,
@@ -591,7 +593,7 @@ export function translateLatinSentence(
     }
 
     interlinearGloss.push({
-      word: rawTok,
+      word: displayWord,
       lemma: analysis.primaryLemma,
       gloss: inflectedGloss,
       morphShort: formatMorphShort(analysis),

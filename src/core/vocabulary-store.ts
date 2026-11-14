@@ -56,12 +56,14 @@ export interface SaveWordInput {
 export interface VocabularyStoreSnapshot {
   entries: VocabularyEntry[];
   knownLemmas: string[];
+  deletedLemmas?: Record<string, string>;
 }
 
 export class VocabularyStore {
   private entries: Map<string, VocabularyEntry> = new Map();
   private lemmaToId: Map<string, string> = new Map();
   private knownLemmas: Set<string> = new Set();
+  private deletedLemmas: Map<string, string> = new Map();
 
   constructor(initial?: VocabularyStoreSnapshot) {
     if (initial) {
@@ -73,6 +75,7 @@ export class VocabularyStore {
     this.entries.clear();
     this.lemmaToId.clear();
     this.knownLemmas.clear();
+    this.deletedLemmas.clear();
     this.mergeSnapshot(snapshot);
   }
 
@@ -80,9 +83,37 @@ export class VocabularyStore {
     if (!snapshot) return false;
     let changed = false;
 
+    if (snapshot.deletedLemmas && typeof snapshot.deletedLemmas === 'object') {
+      for (const [rawLemma, delIso] of Object.entries(snapshot.deletedLemmas)) {
+        const norm = cleanLatinString(rawLemma);
+        if (!norm || !delIso) continue;
+        const prevDel = this.deletedLemmas.get(norm);
+        const delTime = new Date(delIso).getTime() || 0;
+        const prevDelTime = prevDel ? new Date(prevDel).getTime() || 0 : 0;
+        if (!prevDel || delTime > prevDelTime) {
+          this.deletedLemmas.set(norm, delIso);
+          changed = true;
+        }
+        const existingId = this.lemmaToId.get(norm);
+        const existing = existingId ? this.entries.get(existingId) : undefined;
+        if (existing) {
+          const exTime = new Date(existing.updatedAt || existing.savedAt || 0).getTime() || 0;
+          if (delTime >= exTime) {
+            this.entries.delete(existing.id);
+            this.lemmaToId.delete(norm);
+            this.knownLemmas.delete(norm);
+            changed = true;
+          }
+        } else if (this.knownLemmas.has(norm)) {
+          this.knownLemmas.delete(norm);
+          changed = true;
+        }
+      }
+    }
+
     for (const rawLemma of snapshot.knownLemmas || []) {
       const norm = cleanLatinString(rawLemma);
-      if (norm && !this.knownLemmas.has(norm)) {
+      if (norm && !this.deletedLemmas.has(norm) && !this.knownLemmas.has(norm)) {
         this.knownLemmas.add(norm);
         changed = true;
       }
@@ -91,15 +122,31 @@ export class VocabularyStore {
     for (const rawEntry of snapshot.entries || []) {
       if (!rawEntry || (!rawEntry.lemma && !rawEntry.word)) continue;
       const normLemma = cleanLatinString(rawEntry.lemma || rawEntry.word);
+      const incomingTime = new Date(rawEntry.updatedAt || rawEntry.savedAt || 0).getTime() || 0;
+      const tombstoneIso = this.deletedLemmas.get(normLemma);
+      if (tombstoneIso) {
+        const tombTime = new Date(tombstoneIso).getTime() || 0;
+        if (incomingTime <= tombTime) {
+          continue;
+        }
+        this.deletedLemmas.delete(normLemma);
+      }
+
+      const sanitizeTranslation = (val: string | undefined): string => {
+        if (!val) return '';
+        const low = val.toLowerCase();
+        if (normLemma === 'sum' && low.includes('take up')) return 'to be, exist';
+        if ((normLemma === 'qui' || normLemma === 'quis' || normLemma === 'quod') && low.startsWith('be able')) {
+          return 'who, which, what, that';
+        }
+        return val;
+      };
+
       const incoming: VocabularyEntry = {
         ...rawEntry,
         lemma: normLemma,
-        translation:
-          normLemma === 'sum' &&
-          typeof rawEntry.translation === 'string' &&
-          rawEntry.translation.toLowerCase().includes('take up')
-            ? 'to be, exist'
-            : rawEntry.translation,
+        translation: sanitizeTranslation(rawEntry.translation),
+        contextualMeaning: sanitizeTranslation(rawEntry.contextualMeaning || rawEntry.translation),
         tags: Array.isArray(rawEntry.tags) ? rawEntry.tags : [],
         reviewHistory: Array.isArray(rawEntry.reviewHistory) ? rawEntry.reviewHistory : [],
       };
@@ -122,7 +169,6 @@ export class VocabularyStore {
       }
 
       const existingTime = new Date(existing.updatedAt || existing.savedAt || 0).getTime() || 0;
-      const incomingTime = new Date(incoming.updatedAt || incoming.savedAt || 0).getTime() || 0;
       const incomingWins =
         incomingTime > existingTime ||
         (incomingTime === existingTime &&
@@ -200,11 +246,13 @@ export class VocabularyStore {
     return {
       entries: this.getAll(),
       knownLemmas: Array.from(this.knownLemmas),
+      deletedLemmas: Object.fromEntries(this.deletedLemmas),
     };
   }
 
   public saveWord(input: SaveWordInput, now: Date = new Date()): VocabularyEntry {
     const normLemma = cleanLatinString(input.lemma || input.word);
+    this.deletedLemmas.delete(normLemma);
     const existingId = this.lemmaToId.get(normLemma);
     if (existingId && this.entries.has(existingId)) {
       const existing = this.entries.get(existingId)!;
@@ -327,23 +375,25 @@ export class VocabularyStore {
     return updated;
   }
 
-  public removeEntry(id: string): boolean {
+  public removeEntry(id: string, now: Date = new Date()): boolean {
     const existing = this.entries.get(id);
     if (!existing) return false;
     const norm = existing.lemma.toLowerCase();
     this.lemmaToId.delete(norm);
     this.knownLemmas.delete(norm);
+    this.deletedLemmas.set(norm, now.toISOString());
     return this.entries.delete(id);
   }
 
-  public markLemmaKnown(lemma: string): void {
+  public markLemmaKnown(lemma: string, now: Date = new Date()): void {
     const norm = cleanLatinString(lemma);
     if (!norm) return;
+    this.deletedLemmas.delete(norm);
     this.knownLemmas.add(norm);
     const id = this.lemmaToId.get(norm);
     if (id && this.entries.has(id)) {
       const existing = this.entries.get(id)!;
-      this.entries.set(id, { ...existing, familiarity: 4, updatedAt: new Date().toISOString() });
+      this.entries.set(id, { ...existing, familiarity: 4, updatedAt: now.toISOString() });
     }
   }
 
@@ -380,7 +430,7 @@ export class VocabularyStore {
     const rows = this.getAll().map((e) => {
       const cols = [
         e.word,
-        e.customDefinition || e.translation,
+        e.translation,
         e.customDefinition || '',
         e.notes || '',
         e.headword,

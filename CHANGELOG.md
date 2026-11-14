@@ -5,7 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). For the
 
 ---
 
-## [1.1.0] - 2026-11-13
+## [1.2.0] - 2026-11-14
+
+### Fixed
+- **DeepSeek V4.1 Flash 1017 Independent Browser QA Audit Remediation (`BUG-01`–`BUG-09` & `OBS-01`):**
+  - **`BUG-01` (P1 — `qui` / `quis` Definition & Saved Entry Migration):** Fixed `qui, quae, quod` and `quis, quid` in `thomistic-lexicon.json` and `ecclesiastical-dict.json` (which previously inherited `"be able"` from the irregular verb `queo, quire`), removed the truncated `poss` key, and added automatic migration in `VocabularyStore.mergeSnapshot()` to repair any saved `qui`/`quis`/`quod` entry with `translation: "be able"`.
+  - **`BUG-02` (P1 — Deletion Tombstones & Sync Consistency):** Added `deletedLemmas` tombstones to `VocabularyStoreSnapshot` so deleted entries never resurrect from stale `chrome.storage` snapshots or cross-tab sync events.
+  - **`BUG-03` & `BUG-04` (P1/P2 — Keyboard Word Navigation, Modal Focus Trap, Skip Link & Tab Semantics):** Added WAI-ARIA roving `tabindex` (`role="button"`, `ArrowRight`/`ArrowLeft`/`ArrowDown`/`ArrowUp` + `Enter`/`Space`) on `.ct-word` spans (keeping page tab stops at `1`), added `Tab`/`Shift+Tab` focus trapping and opener focus restoration to `#st-phrasepump-modal`, wired `#st-skip-link` to focus `#st-sidepanel`, and added `role="tablist"` / `role="tab"` / `aria-selected` to side-panel tabs.
+  - **`BUG-05` (P2 — Infinitive Disambiguation, `limitibus` Case & `intentio` Nuance):** Demoted archaic 2nd-singular passive `-are`/`-ere`/`-ire` forms and `Locative` plural parses so `investigare` after `necessarium est` parses as **Present Active Infinitive** (`"to investigate"`) and `limitibus` parses as **Ablative/Dative Plural**; added curated Thomistic vs. Classical meaning for `intentio`.
+  - **`BUG-06` & `OBS-01` (P2 — Parallel Corpus Loading State & Saved Sentence Hydration):** Side-by-Side EN columns now display `"Loading Reference Translation..."` while `summa-english.json` loads instead of prematurely showing `"No Bundled Reference Translation"`, and saving a word before parallel corpus load automatically upgrades `sentenceTranslation` in the background.
+  - **`BUG-07`, `BUG-08` & `BUG-09` (P2/P3 — Mobile 375px Layout, Due-Only PhrasePump Queue & Polish):** Fixed 375px mobile overflow and popup button wrapping, restricted PhrasePump review sessions to `dueEntries` when due cards exist, preserved `#st-popup` when pressing `Escape` inside `#st-sidepanel` search inputs, separated Anki `Back` (`translation`) from `CustomDefinition`, stripped trailing punctuation from interlinear word cards, and unified version `1.2.0` across `manifest.json`, `package.json`, and `data-st-version`.
 
 ### Added
 - **Corpus-Wide Parallel English Translations from `isidore.co/aquinas` (`80,695` Total Verified Sections — `82.3%` of Complete Opera Omnia):**

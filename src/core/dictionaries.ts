@@ -82,6 +82,8 @@ export const INLINE_THOMISTIC_GLOSSES: Record<string, string> = {
   intellectus: 'Intellect',
   intelligibilis: 'Intelligible',
   intellectualis: 'Intellectual',
+  intentio: 'Intention',
+  intentionalis: 'Intentional',
   ratio: 'Reason',
   rationalis: 'Rational',
   voluntas: 'Will',

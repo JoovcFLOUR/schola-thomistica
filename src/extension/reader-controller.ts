@@ -12,8 +12,10 @@ import {
 import {
   ensureDataLoaded,
   ensureLexicalDataLoaded,
+  ensureParallelCorpusLoaded,
   isDataLoaded,
   isLexicalDataLoaded,
+  isParallelCorpusLoaded,
   quickResolveTokenLemma,
 } from '../core/data-loader';
 import { analyzeWordInContext, ContextualAnalysisResult } from '../core/context-analyzer';
@@ -72,6 +74,7 @@ export class ScholaThomisticaReader {
   private isAnswerRevealed = false;
   private phrasePumpMode: 'mixed' | PhrasePumpExerciseType = 'mixed';
   private lastSavedToast = '';
+  private modalOpenerElement: HTMLElement | null = null;
 
   constructor(win: Window & typeof globalThis) {
     this.win = win;
@@ -121,19 +124,15 @@ export class ScholaThomisticaReader {
           (res) => {
             let changed = false;
             if (res?.[STORAGE_KEY_VOCAB]) {
-              const localCountBefore = this.vocabStore.getAll().length;
               const mergedVocab = this.vocabStore.mergeSnapshot(res[STORAGE_KEY_VOCAB]);
               if (mergedVocab) changed = true;
-              // Mirror merged union to localStorage and back to chrome.storage if local had unique entries
+              // Mirror merged union (including tombstones & migrations) to both localStorage and chrome.storage
               const mergedSnap = this.vocabStore.toSnapshot();
               this.win.localStorage?.setItem(STORAGE_KEY_VOCAB, JSON.stringify(mergedSnap));
-              const sharedCount = Array.isArray(res[STORAGE_KEY_VOCAB]?.entries)
-                ? res[STORAGE_KEY_VOCAB].entries.length
-                : 0;
-              if (localCountBefore > 0 && mergedSnap.entries.length > sharedCount) {
+              if (JSON.stringify(mergedSnap) !== JSON.stringify(res[STORAGE_KEY_VOCAB])) {
                 chromeApi.storage.local.set({ [STORAGE_KEY_VOCAB]: mergedSnap });
               }
-            } else if (this.vocabStore.getAll().length > 0) {
+            } else if (this.vocabStore.getAll().length > 0 || Object.keys(this.vocabStore.toSnapshot().deletedLemmas || {}).length > 0) {
               chromeApi.storage.local.set({
                 [STORAGE_KEY_VOCAB]: this.vocabStore.toSnapshot(),
               });
@@ -529,7 +528,7 @@ export class ScholaThomisticaReader {
                 }
               }
               htmlParts.push(
-                `<span class="ct-word" data-word="${part}" data-lemma="${lemma}" data-familiarity="${fam}"${extraAttrs} data-char-offset="${charCounter}">${part}</span>`
+                `<span class="ct-word" role="button" tabindex="-1" data-word="${part}" data-lemma="${lemma}" data-familiarity="${fam}"${extraAttrs} data-char-offset="${charCounter}">${part}</span>`
               );
             } else {
               htmlParts.push(this.escapeHtml(part));
@@ -725,6 +724,13 @@ export class ScholaThomisticaReader {
       }
     }
 
+    // BUG-03: Roving tabindex on .ct-word — exactly 1 word has tabindex="0" so keyboard users can Tab into the text
+    // and navigate between words with ArrowLeft/ArrowRight without adding 4,500 tab stops
+    if (!this.doc.querySelector('.ct-word[tabindex="0"]')) {
+      const firstWord = this.doc.querySelector<HTMLElement>('.ct-word');
+      firstWord?.setAttribute('tabindex', '0');
+    }
+
     if (this.prefs.bilingualMode) {
       this.populateAllBilingualColumns();
     }
@@ -758,11 +764,27 @@ export class ScholaThomisticaReader {
     citation: string
   ): void {
     if (englishCol.hasAttribute('data-loaded')) return;
-    if (!isDataLoaded()) {
-      void ensureDataLoaded(this.win).then(() => {
+    if (!isParallelCorpusLoaded()) {
+      englishCol.innerHTML = `
+        <div class="st-col-english-header">
+          Loading Reference Translation (${this.escapeHtml(citation || 'Parallel Text')})...
+        </div>
+        <div style="font-size:0.92em;color:var(--st-text-secondary);">
+          Loading parallel English corpus...
+        </div>
+      `;
+      void Promise.all([
+        ensureLexicalDataLoaded(this.win),
+        ensureParallelCorpusLoaded(this.win),
+      ]).then(([, parallelOk]) => {
         englishCol.removeAttribute('data-loaded');
-        this.populateEnglishColumnForParagraph(p, englishCol, cleanText, citation);
+        if (parallelOk) {
+          this.populateEnglishColumnForParagraph(p, englishCol, cleanText, citation);
+        } else {
+          this.renderFallbackEnglishColumn(p, englishCol, citation);
+        }
       });
+      return;
     }
     englishCol.setAttribute('data-loaded', 'true');
     const tr = translateLatinSentence(cleanText, citation, cleanText);
@@ -775,23 +797,33 @@ export class ScholaThomisticaReader {
         <div>${this.escapeHtml(tr.referenceTranslation)}</div>
       `;
     } else {
-      englishCol.innerHTML = `
-        <div class="st-col-english-header">
-          No Bundled Reference Translation (${this.escapeHtml(citation || 'Section')})
-        </div>
-        <div style="font-size:0.92em;color:var(--st-text-secondary);margin-bottom:8px;">
-          No authoritative English translation is bundled for this specific paragraph. Use the Interlinear Word-by-Word Gloss below or click any Latin word to inspect its 5 dictionaries.
-        </div>
-        <button type="button" class="st-para-btn st-open-gloss-from-col">Open Interlinear Word-by-Word Gloss Below</button>
-      `;
-      englishCol.querySelector('.st-open-gloss-from-col')?.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        const glossBtn = p.querySelector<HTMLButtonElement>('.st-para-gloss-btn');
-        if (glossBtn && glossBtn.getAttribute('aria-expanded') !== 'true') {
-          glossBtn.click();
-        }
-      });
+      this.renderFallbackEnglishColumn(p, englishCol, citation);
     }
+    p.setAttribute('data-bilingual-ready', 'true');
+  }
+
+  private renderFallbackEnglishColumn(
+    p: HTMLElement,
+    englishCol: HTMLElement,
+    citation: string
+  ): void {
+    englishCol.setAttribute('data-loaded', 'true');
+    englishCol.innerHTML = `
+      <div class="st-col-english-header">
+        No Bundled Reference Translation (${this.escapeHtml(citation || 'Section')})
+      </div>
+      <div style="font-size:0.92em;color:var(--st-text-secondary);margin-bottom:8px;">
+        No authoritative English translation is bundled for this specific paragraph. Use the Interlinear Word-by-Word Gloss below or click any Latin word to inspect its 5 dictionaries.
+      </div>
+      <button type="button" class="st-para-btn st-open-gloss-from-col">Open Interlinear Word-by-Word Gloss Below</button>
+    `;
+    englishCol.querySelector('.st-open-gloss-from-col')?.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const glossBtn = p.querySelector<HTMLButtonElement>('.st-para-gloss-btn');
+      if (glossBtn && glossBtn.getAttribute('aria-expanded') !== 'true') {
+        glossBtn.click();
+      }
+    });
     p.setAttribute('data-bilingual-ready', 'true');
   }
 
@@ -813,6 +845,10 @@ export class ScholaThomisticaReader {
     if (this.selectedElement) {
       this.selectedElement.classList.remove('ct-selected');
     }
+    this.doc.querySelectorAll<HTMLElement>('.ct-word[tabindex="0"]').forEach((el) => {
+      if (el !== wordEl) el.setAttribute('tabindex', '-1');
+    });
+    wordEl.setAttribute('tabindex', '0');
     this.selectedElement = wordEl;
     wordEl.classList.add('ct-selected');
 
@@ -954,6 +990,22 @@ export class ScholaThomisticaReader {
     if (this.selectedElement && this.currentAnalysis) {
       this.renderPopup(this.selectedElement, this.currentAnalysis);
     }
+
+    // OBS-01: If parallel corpus was not yet loaded when saving, hydrate it in background and upgrade sentenceTranslation
+    if (!this.currentAnalysis.sentenceTranslation.contextualTranslation && !isParallelCorpusLoaded()) {
+      const savedSentence = this.currentSentence;
+      const savedCit = this.currentCitation.replace(/^\[\d+\]\s*/, '');
+      void ensureParallelCorpusLoaded(this.win).then((ok) => {
+        if (ok) {
+          const tr = translateLatinSentence(savedSentence, savedCit, savedSentence);
+          if (tr.contextualTranslation) {
+            this.vocabStore.updateEntry(saved.id, { sentenceTranslation: tr.contextualTranslation });
+            this.persistState();
+            this.renderSidePanel();
+          }
+        }
+      });
+    }
     return saved;
   }
 
@@ -1086,15 +1138,26 @@ export class ScholaThomisticaReader {
       const nextMode = modeSelect.value as ReaderPreferences['readingMode'];
       this.prefs.readingMode = nextMode;
       // Independent Reader mode automatically collapses the side panel for distraction-free reading;
-      // Assisted Reading opens the side panel if collapsed.
+      // Assisted Reading and Guided Scholastic open the side panel if collapsed (BUG-09.5).
       if (nextMode === 'independent') {
         this.prefs.panelCollapsed = true;
-      } else if (nextMode === 'assisted') {
+      } else if (nextMode === 'assisted' || nextMode === 'guided') {
         this.prefs.panelCollapsed = false;
       }
       this.applyPreferences();
       this.renderSidePanel();
       this.persistState();
+    });
+
+    bar.querySelector('#st-skip-link')?.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      if (this.prefs.panelCollapsed) {
+        this.prefs.panelCollapsed = false;
+        this.applyPreferences();
+      }
+      const panelEl = this.doc.getElementById('st-sidepanel');
+      const firstTab = panelEl?.querySelector<HTMLElement>('.st-tab.st-active, .st-tab');
+      (firstTab || panelEl)?.focus?.();
     });
 
     bar.querySelector('#st-bilingual-toggle')?.addEventListener('click', () => {
@@ -1220,13 +1283,30 @@ export class ScholaThomisticaReader {
     });
 
     this.doc.addEventListener('keydown', (ev) => {
+      const target = ev.target as HTMLElement | null;
+      const wordEl = target?.closest?.('.ct-word') as HTMLElement | null;
+      if (!wordEl) return;
+
       if (ev.key === 'Enter' || ev.key === ' ') {
-        const target = ev.target as HTMLElement | null;
-        const wordEl = target?.closest?.('.ct-word') as HTMLElement | null;
-        if (wordEl) {
-          ev.preventDefault();
-          ev.stopPropagation();
-          this.selectWordElement(wordEl);
+        ev.preventDefault();
+        ev.stopPropagation();
+        this.selectWordElement(wordEl);
+      } else if (
+        ev.key === 'ArrowRight' ||
+        ev.key === 'ArrowLeft' ||
+        ev.key === 'ArrowDown' ||
+        ev.key === 'ArrowUp'
+      ) {
+        ev.preventDefault();
+        const allWords = Array.from(this.doc.querySelectorAll<HTMLElement>('.ct-word'));
+        const curIdx = allWords.indexOf(wordEl);
+        if (curIdx >= 0 && allWords.length > 1) {
+          const step = ev.key === 'ArrowRight' || ev.key === 'ArrowDown' ? 1 : -1;
+          const nextIdx = (curIdx + step + allWords.length) % allWords.length;
+          const nextWord = allWords[nextIdx];
+          wordEl.setAttribute('tabindex', '-1');
+          nextWord.setAttribute('tabindex', '0');
+          nextWord.focus();
         }
       }
     });
@@ -1370,8 +1450,8 @@ export class ScholaThomisticaReader {
         <button type="button" class="st-status-btn ${currentFam === 4 ? 'st-active' : ''}" data-set-fam="4" aria-pressed="${currentFam === 4}" title="Shortcut: 4 or K">4 \u2022 Known</button>
       </div>
       ${userAnnotationCardHtml}
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:5px;">
-        <span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--st-accent-teal);white-space:nowrap;">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px;margin-bottom:5px;">
+        <span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--st-accent-teal);">
           Dictionary Perspectives (${wa.dictionaryEntries.length} Sources)
         </span>
         <button type="button" id="st-popup-toggle-note-btn" class="st-btn st-btn-primary" style="font-size:11px;padding:3px 9px;min-height:24px;" aria-expanded="false">
@@ -1428,9 +1508,9 @@ export class ScholaThomisticaReader {
       const copyBtn = popup.querySelector('#st-popup-copy');
       const customStr = savedEntry?.customDefinition ? `${savedEntry.customDefinition} | ` : '';
       const textToCopy = `${wa.headword} — ${customStr}${wa.ecclesiasticalMeaning}`;
+      if (copyBtn) copyBtn.textContent = '\u2713';
       try {
-        void this.win.navigator?.clipboard?.writeText(textToCopy);
-        if (copyBtn) copyBtn.textContent = '\u2713';
+        void this.win.navigator?.clipboard?.writeText(textToCopy)?.catch(() => {});
       } catch {
         // Ignore clipboard errors
       }
@@ -1507,14 +1587,16 @@ export class ScholaThomisticaReader {
     if (this.doc.getElementById('st-sidepanel')) return;
     const panel = this.doc.createElement('aside');
     panel.id = 'st-sidepanel';
+    panel.setAttribute('tabindex', '-1');
+    panel.setAttribute('aria-label', 'Schola Thomistica Study Panel');
     panel.innerHTML = `
-      <div class="st-tabs">
-        <button type="button" class="st-tab st-active" data-tab="context">Context</button>
-        <button type="button" class="st-tab" data-tab="dictionaries">Lexica (5)</button>
-        <button type="button" class="st-tab" data-tab="vocabulary">Vocab</button>
-        <button type="button" class="st-tab" data-tab="stats">Stats</button>
+      <div class="st-tabs" role="tablist" aria-label="Study Panel Sections">
+        <button type="button" role="tab" aria-selected="true" aria-controls="st-panel-body" class="st-tab st-active" data-tab="context">Context</button>
+        <button type="button" role="tab" aria-selected="false" aria-controls="st-panel-body" class="st-tab" data-tab="dictionaries">Lexica (5)</button>
+        <button type="button" role="tab" aria-selected="false" aria-controls="st-panel-body" class="st-tab" data-tab="vocabulary">Vocab</button>
+        <button type="button" role="tab" aria-selected="false" aria-controls="st-panel-body" class="st-tab" data-tab="stats">Stats</button>
       </div>
-      <div class="st-panel-body" id="st-panel-body"></div>
+      <div class="st-panel-body" id="st-panel-body" role="tabpanel"></div>
     `;
     this.doc.body.appendChild(panel);
 
@@ -1533,7 +1615,9 @@ export class ScholaThomisticaReader {
     if (!panel || !body) return;
 
     panel.querySelectorAll('.st-tab').forEach((btn) => {
-      btn.classList.toggle('st-active', btn.getAttribute('data-tab') === this.prefs.activeTab);
+      const isActive = btn.getAttribute('data-tab') === this.prefs.activeTab;
+      btn.classList.toggle('st-active', isActive);
+      btn.setAttribute('aria-selected', String(isActive));
     });
 
     const dueEl = this.doc.getElementById('st-due-badge');
@@ -2024,9 +2108,21 @@ export class ScholaThomisticaReader {
     this.doc.body.appendChild(modal);
   }
 
+  public closePhrasePumpModal(): void {
+    const modal = this.doc.getElementById('st-phrasepump-modal');
+    modal?.classList.remove('st-visible');
+    if (this.modalOpenerElement && this.doc.contains(this.modalOpenerElement)) {
+      this.modalOpenerElement.focus?.();
+    }
+  }
+
   public openPhrasePumpModal(): void {
     const modal = this.doc.getElementById('st-phrasepump-modal');
     if (!modal) return;
+
+    if (!modal.classList.contains('st-visible')) {
+      this.modalOpenerElement = this.doc.activeElement as HTMLElement | null;
+    }
 
     const allCards = this.vocabStore.getAll();
     const session = generatePhrasePumpSession(allCards, {
@@ -2062,7 +2158,7 @@ export class ScholaThomisticaReader {
         </div>
       `;
       modal.querySelector('#st-close-modal')?.addEventListener('click', () => {
-        modal.classList.remove('st-visible');
+        this.closePhrasePumpModal();
       });
       return;
     }
@@ -2080,7 +2176,7 @@ export class ScholaThomisticaReader {
         </div>
       `;
       modal.querySelector('#st-close-modal')?.addEventListener('click', () => {
-        modal.classList.remove('st-visible');
+        this.closePhrasePumpModal();
       });
       return;
     }
@@ -2166,7 +2262,7 @@ export class ScholaThomisticaReader {
     `;
 
     modal.querySelector('#st-close-modal')?.addEventListener('click', () => {
-      modal.classList.remove('st-visible');
+      this.closePhrasePumpModal();
     });
 
     const modeSelect = modal.querySelector('#st-phrasepump-mode') as HTMLSelectElement | null;
@@ -2209,17 +2305,50 @@ export class ScholaThomisticaReader {
       const modalVisible = Boolean(modalEl?.classList.contains('st-visible'));
       const popupEl = this.doc.getElementById('st-popup');
       const popupVisible = Boolean(popupEl?.classList.contains('st-visible'));
+      const activeEl = this.doc.activeElement as HTMLElement | null;
+      const activeTag = activeEl?.tagName;
+
+      // BUG-04: Trap Tab / Shift+Tab inside PhrasePump modal while open
+      if (modalVisible && ev.key === 'Tab' && modalEl) {
+        const focusables = Array.from(
+          modalEl.querySelectorAll<HTMLElement>(
+            'button:not(:disabled), select:not(:disabled), input:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
+          )
+        );
+        if (focusables.length > 0) {
+          const first = focusables[0];
+          const last = focusables[focusables.length - 1];
+          if (ev.shiftKey) {
+            if (!activeEl || activeEl === first || !modalEl.contains(activeEl)) {
+              ev.preventDefault();
+              last.focus();
+            }
+          } else {
+            if (!activeEl || activeEl === last || !modalEl.contains(activeEl)) {
+              ev.preventDefault();
+              first.focus();
+            }
+          }
+        }
+        return;
+      }
 
       if (ev.key === 'Escape') {
         if (modalVisible) {
-          modalEl?.classList.remove('st-visible');
+          this.closePhrasePumpModal();
+        } else if (
+          activeEl &&
+          (activeTag === 'INPUT' || activeTag === 'TEXTAREA') &&
+          activeEl.closest('#st-sidepanel')
+        ) {
+          // BUG-09.1: Escape inside a sidepanel search/edit input blurs the input without closing the word popup
+          activeEl.blur?.();
         } else {
           this.closePopup();
         }
         return;
       }
 
-      const activeTag = (this.doc.activeElement as HTMLElement | null)?.tagName;
       if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') {
         return;
       }

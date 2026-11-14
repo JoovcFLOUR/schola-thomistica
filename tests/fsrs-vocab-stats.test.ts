@@ -261,11 +261,10 @@ describe('Task 6: FSRS Spaced Repetition, PhrasePump, Personal Vocabulary & Read
     expect(session.exercises[0].expectedAnswer).toContain('beatitudo supernaturalis in Deo');
     expect(session.exercises[0].userNotes).toBe('Cf. ST I-II q. 3 a. 8: ultima beatitudo hominis.');
 
-    // Anki TSV includes customDefinition and Notes column
+    // Anki TSV includes customDefinition and Notes column while keeping plain translation in Back (BUG-09.3)
     const tsv = store.exportAnkiTSV();
     expect(tsv).toContain('#columns:Front\tBack\tCustomDefinition\tNotes\tLemma');
-    expect(tsv).toContain('beatitudo supernaturalis in Deo');
-    expect(tsv).toContain('Cf. ST I-II q. 3 a. 8: ultima beatitudo hominis.');
+    expect(tsv).toContain('salutis\tsalvation, welfare\tbeatitudo supernaturalis in Deo\tCf. ST I-II q. 3 a. 8: ultima beatitudo hominis.');
 
     // Clearing customDefinition via updateEntry("") falls back cleanly
     const cleared = store.updateEntry(saved.id, { customDefinition: '', notes: '' }, t2);
@@ -293,10 +292,44 @@ describe('Task 6: FSRS Spaced Repetition, PhrasePump, Personal Vocabulary & Read
     expect(store.getByLemma('salus')?.customDefinition).toBe('');
     expect(store.getByLemma('salus')?.notes).toBe('');
 
-    // QA Finding #9: removeEntry also clears knownLemmas
+    // BUG-02: Removing an entry records a deletion tombstone so merging an older snapshot does NOT resurrect the deleted entry
     store.markLemmaKnown('salus');
     expect(store.getLemmaFamiliarity('salus')).toBe(4);
-    store.removeEntry(saved.id);
+    store.removeEntry(saved.id, new Date('2026-11-13T12:00:00Z'));
     expect(store.getLemmaFamiliarity('salus')).toBe(0);
+    store.mergeSnapshot(olderStore.toSnapshot());
+    expect(store.getByLemma('salus')).toBeUndefined();
+    expect(store.getLemmaFamiliarity('salus')).toBe(0);
+
+    // BUG-01 migration: mergeSnapshot automatically repairs corrupted qui/quis = "be able" entries
+    store.mergeSnapshot({
+      entries: [
+        {
+          id: 'voc_qui_1',
+          word: 'quod',
+          lemma: 'qui',
+          headword: 'qui, quae, quod',
+          translation: 'be able',
+          contextualMeaning: 'be able',
+          partOfSpeech: 'Pronoun',
+          morphologySummary: 'Nom/Acc Sg N',
+          originalSentence: 'Videtur quod non.',
+          sentenceTranslation: 'It seems that not.',
+          sourceWork: 'ST',
+          sourceCitation: 'I q. 1 a. 1',
+          sourceUrl: '',
+          savedAt: t1.toISOString(),
+          updatedAt: t1.toISOString(),
+          familiarity: 1,
+          tags: [],
+          notes: '',
+          fsrsCard: createEmptyFSRSCard(t1),
+          reviewHistory: [],
+        },
+      ],
+      knownLemmas: [],
+    });
+    expect(store.getByLemma('qui')?.translation).not.toContain('be able');
+    expect(store.getByLemma('qui')?.translation).toContain('who, which');
   });
 });

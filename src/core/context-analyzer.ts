@@ -421,6 +421,20 @@ export function analyzeWordInContext(
           'Functions as a Scholastic Gerundive of Obligation (passive periphrastic with implicit/explicit "est/sunt")'
         );
       }
+
+      // 5. Complementary / Subjective Infinitive after impersonal or modal expressions (BUG-05: "necessarium est primo investigare")
+      if (p.rawPos === 'V' && p.mood === 'Infinitive') {
+        if (
+          /\b(necessarium|necesse|oportet|convenit|decet|licet|potest|possunt|possit|possint|debet|debent|debeat|videtur|dicitur|contingit|manifestum\s+est|patet|intendit|incipit|vult|voluit)\b/i.test(
+            sentence
+          )
+        ) {
+          item.contextScore += 75;
+          item.reasons.push(
+            'Complementary / Subjective Infinitive governed by the modal or impersonal verb in this clause'
+          );
+        }
+      }
     }
   }
 
@@ -452,11 +466,13 @@ export function analyzeWordInContext(
     selectedParse?.entry.senses ||
     wordAnalysis.ecclesiasticalMeaning;
 
-  const contextualMeaning = wordAnalysis.isThomisticKeyTerm
-    ? wordAnalysis.ecclesiasticalMeaning
-    : selectedParse
-    ? `${selectedParse.entry.senses} (${selectedParse.formExplanation})`
-    : wordAnalysis.ecclesiasticalMeaning;
+  const baseContextual = wordAnalysis.ecclesiasticalMeaning || selectedParse?.entry.senses || rawWord;
+  const contextualMeaning =
+    wordAnalysis.isThomisticKeyTerm || baseContextual !== selectedParse?.entry.senses
+      ? baseContextual
+      : selectedParse
+      ? `${baseContextual} (${selectedParse.formExplanation})`
+      : baseContextual;
 
   const nuanceExplanation = wordAnalysis.isThomisticKeyTerm
     ? `In Thomas Aquinas (${citation || 'Scholastic context'}), "${rawWord}" (${wordAnalysis.headword}) carries its technical Thomistic/Ecclesiastical sense: ${wordAnalysis.ecclesiasticalMeaning} ${wordAnalysis.thomisticNote || ''}`.trim()

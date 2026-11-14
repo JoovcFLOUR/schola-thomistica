@@ -447,13 +447,39 @@ describe('Task 7: End-to-End Corpus Thomisticum Browser Extension Integration', 
     sthReader.init();
     const doc = sthDom.window.document;
 
-    expect(doc.querySelectorAll('.ct-word[tabindex]').length).toBe(0);
-    // NEW-006: Measure actual focusable controls injected by the extension UI (< 30 controls) vs native page links
+    expect(doc.querySelectorAll('.ct-word[tabindex="0"]').length).toBe(1);
+    expect(doc.querySelector('.ct-word')?.getAttribute('role')).toBe('button');
+    // NEW-006 & BUG-03/04: Roving tabindex gives exactly 1 tab stop for .ct-word and < 30 injected UI controls
     const injectedFocusable = doc.querySelectorAll(
       '#st-topbar a[href], #st-topbar button:not(:disabled), #st-topbar select, #st-sidepanel button:not(:disabled), #st-sidepanel input, #st-sidepanel select, #st-popup button:not(:disabled)'
     );
     expect(injectedFocusable.length).toBeLessThan(30);
     expect(doc.getElementById('st-skip-link')).not.toBeNull();
+    expect(doc.querySelector('.st-tabs')?.getAttribute('role')).toBe('tablist');
+    expect(doc.querySelector('.st-tab')?.getAttribute('role')).toBe('tab');
+    expect(doc.querySelector('.st-tab.st-active')?.getAttribute('aria-selected')).toBe('true');
+
+    // BUG-03: ArrowRight roving tabindex moves tabindex="0" and focus to the next .ct-word
+    const allWords = Array.from(doc.querySelectorAll<HTMLElement>('.ct-word'));
+    expect(allWords[0].getAttribute('tabindex')).toBe('0');
+    allWords[0].focus();
+    allWords[0].dispatchEvent(new sthDom.window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect(allWords[0].getAttribute('tabindex')).toBe('-1');
+    expect(allWords[1].getAttribute('tabindex')).toBe('0');
+    expect(doc.activeElement).toBe(allWords[1]);
+
+    // BUG-04: Skip link focuses active tab inside #st-sidepanel instead of leaving focus on <body>
+    doc.getElementById('st-skip-link')?.click();
+    expect(doc.activeElement?.closest('#st-sidepanel')).not.toBeNull();
+
+    // BUG-09.5: Switching mode from independent -> guided reopens the side panel
+    const modeSelect = doc.getElementById('st-reading-mode-select') as HTMLSelectElement;
+    modeSelect.value = 'independent';
+    modeSelect.dispatchEvent(new sthDom.window.Event('change'));
+    expect(doc.body.classList.contains('st-panel-collapsed')).toBe(true);
+    modeSelect.value = 'guided';
+    modeSelect.dispatchEvent(new sthDom.window.Event('change'));
+    expect(doc.body.classList.contains('st-panel-collapsed')).toBe(false);
     expect(doc.getElementById('st-popup')?.getAttribute('role')).toBe('dialog');
     expect(doc.getElementById('st-phrasepump-modal')?.getAttribute('role')).toBe('dialog');
     expect(doc.getElementById('st-phrasepump-modal')?.getAttribute('aria-modal')).toBe('true');

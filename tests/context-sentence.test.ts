@@ -133,4 +133,32 @@ describe('Task 5: Context-Aware Scholastic Sentence Analyzer, Grammar Assistant 
     expect(byWord['dividitur'].gloss.toLowerCase()).toContain('divided');
     expect(byWord['utendum'].gloss.toLowerCase()).toContain('use');
   });
+
+  it('BUG-05 & BUG-09.6: parses investigare as Present Active Infinitive after necessarium est, avoids loc. pl. on limitibus, distinguishes Thomistic vs Literal for intentio, and strips trailing punctuation from interlinear token words', () => {
+    const prooemiumSentence =
+      'Et ut intentio nostra sub aliquibus certis limitibus comprehendatur, necessarium est primo investigare de ipsa sacra doctrina, qualis sit, et ad quae se extendat.';
+
+    const invRes = analyzeWordInContext('investigare', prooemiumSentence, 'I q. 1 pr.');
+    expect(invRes.selectedParse?.mood).toBe('Infinitive');
+    expect(invRes.selectedParse?.voice).toBe('Active');
+    expect(invRes.selectedParse?.formExplanation).toContain('Infinitive');
+    expect(invRes.selectedParse?.formExplanation).not.toContain('Imperative');
+
+    const glossTokens = invRes.sentenceTranslation.interlinearGloss;
+    const invTok = glossTokens.find((t) => t.word.toLowerCase() === 'investigare');
+    expect(invTok?.gloss.toLowerCase()).toContain('to investigate');
+    expect(invTok?.gloss.toLowerCase()).not.toContain('is investigated');
+
+    const limTok = glossTokens.find((t) => t.word.toLowerCase() === 'limitibus');
+    expect(limTok?.morphShort).not.toContain('loc.');
+    expect(limTok?.morphShort).toMatch(/abl\.|dat\./);
+
+    // BUG-09.6: No trailing comma on comprehendatur in interlinearGloss
+    expect(glossTokens.some((t) => t.word === 'comprehendatur')).toBe(true);
+    expect(glossTokens.some((t) => t.word === 'comprehendatur,')).toBe(false);
+
+    const intRes = analyzeWordInContext('intentio', prooemiumSentence, 'I q. 1 pr.');
+    expect(intRes.literalVsContextual.contextual.toLowerCase()).toContain('intention');
+    expect(intRes.literalVsContextual.contextual).not.toBe(intRes.literalVsContextual.literal);
+  });
 });
