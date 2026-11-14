@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Schola Thomistica</title>
+  <style>
+    body {
+      width: 340px;
+      margin: 0;
+      padding: 16px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #F7F6EC;
+      color: #14241B;
+    }
+    h1 {
+      margin: 0 0 4px 0;
+      font-size: 16px;
+      color: #800000;
+    }
+    .subtitle {
+      font-size: 12px;
+      color: #43554A;
+      margin-bottom: 12px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .stat-card {
+      background: #FFFFFF;
+      border: 1px solid #D2D0B8;
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: #68786E;
+    }
+    .stat-val {
+      font-size: 18px;
+      font-weight: 700;
+      color: #800000;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 9px 12px;
+      margin-bottom: 8px;
+      border-radius: 7px;
+      border: 1px solid #D2D0B8;
+      background: #FFFFFF;
+      color: #14241B;
+      font-weight: 600;
+      font-size: 12.5px;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      box-sizing: border-box;
+    }
+    .btn-primary {
+      background: #800000;
+      color: #FFFFFF;
+      border-color: #800000;
+    }
+  </style>
+</head>
+<body>
+  <h1>✠ Schola Thomistica</h1>
+  <div class="subtitle">Corpus Thomisticum Latin Reader & PhrasePump</div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Saved Words</div>
+      <div class="stat-val" id="pop-saved">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Due for Review</div>
+      <div class="stat-val" id="pop-due">0</div>
+    </div>
+  </div>
+  <button class="btn btn-primary" id="open-study-btn">Open PhrasePump & FSRS Study Center</button>
+  <a class="btn" href="https://www.corpusthomisticum.org/iopera.html" target="_blank" rel="noopener">Open Corpus Thomisticum (Opera Omnia)</a>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Schola Thomistica — PhrasePump & FSRS Study Center</title>
+  <link rel="stylesheet" href="../styles/content.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 28px;
+      background: var(--st-bg-parchment);
+      color: var(--st-text-primary);
+      font-family: var(--st-font-ui);
+    }
+    .study-container {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+    .study-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 14px;
+      border-bottom: 2px solid var(--st-border);
+    }
+  </style>
+</head>
+<body>
+  <div class="study-container">
+    <div class="study-header">
+      <div>
+        <h1 style="margin:0;color:var(--st-accent-rubric);">✠ Schola Thomistica — Study Center</h1>
+        <div style="font-size:13px;color:var(--st-text-secondary);margin-top:4px;">
+          PhrasePump Contextual Recall • Anki FSRS Scheduler • Multi-Lexicon Explorer
+        </div>
+      </div>
+      <a class="st-btn st-btn-primary" href="https://www.corpusthomisticum.org/iopera.html">Return to Corpus Thomisticum</a>
+    </div>
+    <div id="study-app-root"></div>
+  </div>
+  <script src="study.js"></script>
+</body>
+</html>

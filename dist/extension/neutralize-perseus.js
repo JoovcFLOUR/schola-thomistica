@@ -1,0 +1,1 @@
+try { if (typeof window.goPage === "function" || /corpusthomisticum/i.test(location.hostname) || /thomas|thomistic/i.test(document.title)) { document.ondblclick = null; window.goPage = function() {}; } } catch (e) {}

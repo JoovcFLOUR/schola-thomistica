@@ -1,0 +1,912 @@
+/* Schola Thomistica — Scriptorium Parchment & Scholar Nocturne UI */
+:root {
+  --st-bg-parchment: #EAEBD7;
+  --st-bg-elevated: #F7F6EC;
+  --st-bg-card: #FFFFFF;
+  --st-text-primary: #14241B;
+  --st-text-secondary: #43554A;
+  --st-text-muted: #5F6F65;
+  --st-accent-rubric: #800000;
+  --st-accent-rubric-btn: #800000;
+  --st-accent-rubric-soft: rgba(128, 0, 0, 0.11);
+  --st-accent-teal: #245858;
+  --st-accent-teal-soft: rgba(36, 88, 88, 0.13);
+  --st-accent-gold: #94630E;
+  --st-accent-gold-soft: rgba(184, 134, 11, 0.16);
+  --st-border: #D2D0B8;
+  --st-shadow: 0 10px 30px rgba(20, 36, 27, 0.14);
+  --st-font-ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --st-font-latin: "Palatino Linotype", Palatino, Garamond, "Times New Roman", Georgia, serif;
+  --st-reader-font-size: 18px;
+}
+
+body.st-dark-mode {
+  --st-bg-parchment: #14171A;
+  --st-bg-elevated: #1C2126;
+  --st-bg-card: #232930;
+  --st-text-primary: #E8E3D7;
+  --st-text-secondary: #B8B3A8;
+  --st-text-muted: #928D82;
+  --st-accent-rubric: #E57373;
+  --st-accent-rubric-btn: #9E1C1C;
+  --st-accent-rubric-soft: rgba(229, 115, 115, 0.18);
+  --st-accent-teal: #64BDBD;
+  --st-accent-teal-soft: rgba(100, 189, 189, 0.18);
+  --st-accent-gold: #E5B85C;
+  --st-accent-gold-soft: rgba(229, 184, 92, 0.2);
+  --st-border: #333B44;
+  --st-shadow: 0 12px 34px rgba(0, 0, 0, 0.55);
+  background-color: #14171A !important;
+  color: #E8E3D7 !important;
+}
+
+/* Scope legacy Corpus Thomisticum element overrides in Dark Mode so they never flatten extension classes */
+body.st-dark-mode TABLE,
+body.st-dark-mode TR,
+body.st-dark-mode TD,
+body.st-dark-mode TH,
+body.st-dark-mode DIV:not([class^="st-"]):not([id^="st-"]),
+body.st-dark-mode SPAN:not([class^="st-"]):not([class^="ct-"]) {
+  background-color: transparent !important;
+  color: #E8E3D7 !important;
+}
+
+body.st-dark-mode A:link:not([class^="st-"]),
+body.st-dark-mode A:visited:not([class^="st-"]) {
+  background-color: transparent !important;
+  color: #7CC4C4 !important;
+}
+
+body.st-dark-mode SELECT:not([class^="st-"]),
+body.st-dark-mode INPUT:not([class^="st-"]) {
+  background-color: #232930 !important;
+  color: #E8E3D7 !important;
+  border: 1px solid #3A424D !important;
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+
+body.st-dark-mode HR {
+  border-color: #333B44 !important;
+}
+
+body.st-reader-active {
+  padding-top: 60px !important;
+  padding-right: 345px !important;
+  transition: padding-right 0.2s ease;
+}
+
+body.st-reader-active.st-panel-collapsed {
+  padding-right: 20px !important;
+}
+
+body.st-reader-active P[TITLE] {
+  font-family: var(--st-font-latin);
+  font-size: var(--st-reader-font-size);
+  line-height: 1.72;
+  max-width: 78ch;
+  margin: 0.9em auto 1.25em auto;
+  padding: 0.75em 1.1em;
+  border-radius: 8px;
+  background: var(--st-bg-elevated) !important;
+  border-left: 3px solid var(--st-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: max-width 0.2s ease;
+}
+
+body.st-reader-active.st-bilingual-mode P[TITLE]:not(.st-bilingual-closed),
+body.st-reader-active P[TITLE].st-bilingual-open {
+  max-width: 118ch;
+}
+
+.st-para-columns {
+  display: block;
+}
+
+body.st-reader-active.st-bilingual-mode P[TITLE]:not(.st-bilingual-closed) .st-para-columns,
+body.st-reader-active P[TITLE].st-bilingual-open .st-para-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 22px;
+  align-items: start;
+}
+
+.st-col-latin {
+  min-width: 0;
+  text-align: justify;
+}
+
+body.st-reader-active.st-bilingual-mode P[TITLE]:not(.st-bilingual-closed) .st-col-latin,
+body.st-reader-active P[TITLE].st-bilingual-open .st-col-latin {
+  text-align: left;
+}
+
+.st-col-english {
+  display: none;
+  min-width: 0;
+  border-left: 2px solid var(--st-border);
+  padding-left: 18px;
+  font-family: var(--st-font-ui);
+  font-size: calc(var(--st-reader-font-size) * 0.86);
+  line-height: 1.65;
+  color: var(--st-text-primary);
+  text-align: left;
+}
+
+body.st-reader-active.st-bilingual-mode P[TITLE]:not(.st-bilingual-closed) .st-col-english,
+body.st-reader-active P[TITLE].st-bilingual-open .st-col-english {
+  display: block;
+}
+
+body.st-reader-active.st-bilingual-mode P[TITLE].st-bilingual-closed .st-col-english {
+  display: none !important;
+}
+
+.st-col-english-header {
+  font-size: 0.76em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--st-accent-teal);
+  margin-bottom: 6px;
+}
+
+body.st-reader-active P[TITLE][data-section-type="corpus"] {
+  border-left: 4px solid var(--st-accent-rubric);
+}
+
+body.st-reader-active P[TITLE][data-section-type="sed_contra"] {
+  border-left: 4px solid var(--st-accent-gold);
+}
+
+body.st-reader-active P[TITLE][data-section-type="objection"] {
+  border-left: 4px solid var(--st-accent-teal);
+}
+
+/* Interactive Latin Word Tokens */
+.ct-word {
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0 1px;
+  transition: background-color 0.12s ease, border-color 0.12s ease, outline 0.12s ease;
+  border-bottom: 1px dotted transparent;
+}
+
+.ct-word:hover {
+  background-color: var(--st-accent-teal-soft);
+  border-bottom-color: var(--st-accent-teal);
+}
+
+/* Preserve familiarity background color when selected by using a crisp outline + subtle ring */
+.ct-word.ct-selected {
+  outline: 2px solid var(--st-accent-rubric);
+  box-shadow: 0 0 0 2px var(--st-accent-rubric-soft);
+  font-weight: 600;
+}
+
+/* Progressive Reading Highlighting Modes:
+   1. Assisted Reading ("assisted"):
+      - Shows inline mini-glosses above/below Thomistic & Learning words (.ct-word[data-gloss])
+      - Shows dotted underlines on unseen words (fam 0), rubric pill on Thomistic terms, and colors on Saved (1..3)
+   2. Guided Scholastic ("guided"):
+      - Hides unseen word underlines (fam 0) and inline mini-glosses
+      - Highlights Thomistic technical terms (rubric tint + underline) and Saved vocabulary (1..3)
+   3. Independent Reader ("independent"):
+      - Distraction-free book mode: hides all unseen (0), Familiar (2), Learned (3), and Thomistic highlights
+      - Only words explicitly marked "1 • New" remain subtly underlined */
+body[data-reading-mode="assisted"] .ct-word[data-familiarity="0"] {
+  border-bottom: 1px dotted rgba(36, 88, 88, 0.55);
+}
+
+body.st-dark-mode[data-reading-mode="assisted"] .ct-word[data-familiarity="0"] {
+  border-bottom: 1px dotted rgba(100, 189, 189, 0.6);
+}
+
+body[data-reading-mode="assisted"] .ct-word[data-thomistic="true"]:not([data-familiarity="4"]),
+body[data-reading-mode="guided"] .ct-word[data-thomistic="true"]:not([data-familiarity="4"]) {
+  background-color: rgba(128, 0, 0, 0.08);
+  border-bottom: 1.5px solid rgba(128, 0, 0, 0.55);
+  color: var(--st-accent-rubric);
+}
+
+body.st-dark-mode[data-reading-mode="assisted"] .ct-word[data-thomistic="true"]:not([data-familiarity="4"]),
+body.st-dark-mode[data-reading-mode="guided"] .ct-word[data-thomistic="true"]:not([data-familiarity="4"]) {
+  background-color: rgba(229, 115, 115, 0.14);
+  border-bottom: 1.5px solid rgba(229, 115, 115, 0.65);
+  color: #FCA5A5;
+}
+
+/* In Assisted Reading mode, display inline interlinear mini-glosses on Thomistic terms & saved learning words */
+body[data-reading-mode="assisted"] .ct-word[data-gloss]:not([data-familiarity="4"]) {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: bottom;
+  line-height: 1.15;
+  margin: 0 2px;
+}
+
+body[data-reading-mode="assisted"] .ct-word[data-gloss]:not([data-familiarity="4"])::after {
+  content: attr(data-gloss);
+  font-family: var(--st-font-ui);
+  font-size: 9.5px;
+  font-weight: 600;
+  font-style: normal;
+  color: var(--st-accent-teal);
+  background: var(--st-bg-card);
+  border: 1px solid var(--st-border);
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-top: 1px;
+  white-space: nowrap;
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.ct-word[data-familiarity="1"] {
+  background-color: rgba(217, 119, 6, 0.25) !important;
+  border-bottom: 2px solid #B45309 !important;
+}
+
+.ct-word[data-familiarity="2"] {
+  background-color: rgba(37, 99, 235, 0.16) !important;
+  border-bottom: 2px dashed #1D4ED8 !important;
+}
+
+body.st-dark-mode .ct-word[data-familiarity="2"] {
+  background-color: rgba(96, 165, 250, 0.22) !important;
+  border-bottom: 2px dashed #60A5FA !important;
+}
+
+.ct-word[data-familiarity="3"] {
+  background-color: rgba(22, 163, 74, 0.16) !important;
+  border-bottom: 1.5px dotted #15803D !important;
+}
+
+.ct-word[data-familiarity="4"] {
+  background-color: transparent !important;
+  border-bottom-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Guided Scholastic Mode: hides unseen (0) and inline mini-glosses, shows Thomistic highlights + Saved (1, 2, 3) */
+body[data-reading-mode="guided"] .ct-word[data-familiarity="0"]:not([data-thomistic="true"]) {
+  background-color: transparent;
+  border-bottom-color: transparent;
+}
+
+/* Independent Reader Mode: clean book text — hides unseen (0), Familiar (2), Learned (3), and Thomistic highlights */
+body[data-reading-mode="independent"] .ct-word[data-familiarity="0"],
+body[data-reading-mode="independent"] .ct-word[data-familiarity="2"],
+body[data-reading-mode="independent"] .ct-word[data-familiarity="3"],
+body[data-reading-mode="independent"] .ct-word[data-thomistic="true"]:not([data-familiarity="1"]) {
+  background-color: transparent !important;
+  border-bottom-color: transparent !important;
+  box-shadow: none !important;
+  color: inherit !important;
+}
+
+body[data-reading-mode="independent"] .st-para-bar {
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
+body[data-reading-mode="independent"] .st-para-bar:hover {
+  opacity: 1;
+}
+
+.ct-word:hover {
+  background-color: var(--st-accent-teal-soft) !important;
+  border-bottom-color: var(--st-accent-teal);
+}
+
+/* Scholastic Paragraph Header Bar & Parallel Drawer */
+.st-para-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--st-border);
+  font-family: var(--st-font-ui);
+  font-size: 12px;
+}
+
+.st-section-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  font-size: 11px;
+  background: var(--st-accent-teal-soft);
+  color: var(--st-accent-teal);
+}
+
+.st-section-badge[data-type="corpus"] {
+  background: var(--st-accent-rubric-soft);
+  color: var(--st-accent-rubric);
+}
+
+.st-section-badge[data-type="sed_contra"] {
+  background: var(--st-accent-gold-soft);
+  color: var(--st-accent-gold);
+}
+
+.st-para-btn {
+  border: 1px solid var(--st-border);
+  background: var(--st-bg-card);
+  color: var(--st-text-secondary);
+  font-size: 11.5px;
+  font-weight: 600;
+  min-height: 26px;
+  padding: 3px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: var(--st-font-ui);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.st-para-btn:hover {
+  border-color: var(--st-accent-teal);
+  color: var(--st-accent-teal);
+}
+
+.st-parallel-drawer {
+  display: none;
+  margin-top: 10px;
+  padding: 10px 12px;
+  max-height: 380px;
+  overflow-y: auto;
+  border-radius: 6px;
+  background: var(--st-bg-card);
+  border: 1px solid var(--st-border);
+  font-family: var(--st-font-ui);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--st-text-primary);
+}
+
+.st-parallel-drawer.st-open {
+  display: block;
+}
+
+/* Top Reader Bar */
+#st-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 48px;
+  background: var(--st-bg-elevated);
+  border-bottom: 1px solid var(--st-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  z-index: 2147483640;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  padding: 5px 12px;
+  box-sizing: border-box;
+  font-family: var(--st-font-ui);
+  font-size: 12px;
+  color: var(--st-text-primary);
+  text-align: left;
+}
+
+.st-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--st-accent-rubric);
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+
+.st-coverage-pill {
+  display: inline-block;
+  vertical-align: middle;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--st-bg-card);
+  border: 1px solid var(--st-border);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--st-text-secondary);
+  white-space: nowrap;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.st-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.st-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--st-border);
+  background: var(--st-bg-card);
+  color: var(--st-text-primary);
+  font-family: var(--st-font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.st-btn:hover:not(:disabled) {
+  border-color: var(--st-accent-teal);
+}
+
+.st-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.st-btn-primary {
+  background: var(--st-accent-rubric-btn);
+  color: #FFFFFF !important;
+  border-color: var(--st-accent-rubric-btn);
+}
+
+#st-popup,
+#st-sidepanel,
+#st-phrasepump-modal {
+  text-align: left !important;
+}
+
+/* Contextual Word Popup */
+#st-popup {
+  position: fixed;
+  z-index: 2147483645;
+  width: 410px;
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--st-bg-card);
+  border: 1px solid var(--st-border);
+  border-top: 3px solid var(--st-accent-rubric);
+  border-radius: 10px;
+  box-shadow: var(--st-shadow);
+  padding: 9px 12px;
+  font-family: var(--st-font-ui);
+  color: var(--st-text-primary);
+  display: none;
+  flex-direction: column;
+  transition: opacity 0.1s ease;
+}
+
+#st-popup.st-visible {
+  display: block;
+}
+
+#st-popup[data-placement="above"] {
+  border-top: 1px solid var(--st-border);
+  border-bottom: 3px solid var(--st-accent-rubric);
+}
+
+.st-popup-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  border: 1px solid var(--st-border);
+  background: var(--st-bg-elevated);
+  color: var(--st-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.st-popup-icon-btn:hover {
+  border-color: var(--st-accent-teal);
+  color: var(--st-accent-teal);
+}
+
+.st-popup-dicts {
+  max-height: 190px;
+  overflow-y: auto;
+  border: 1px solid var(--st-border);
+  border-radius: 7px;
+  background: var(--st-bg-elevated);
+  padding: 5px 8px;
+  margin-bottom: 2px;
+}
+
+.st-popup-dict-item {
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--st-border);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.st-popup-dict-item:last-child {
+  border-bottom: none;
+}
+
+.st-dict-badge {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+.st-dict-badge[data-source="My Definition & Note"] {
+  background: var(--st-accent-teal);
+  color: #FFFFFF;
+}
+
+.st-dict-badge[data-source="Thomistic Lexicon"] {
+  background: var(--st-accent-rubric-soft);
+  color: var(--st-accent-rubric);
+}
+
+.st-dict-badge[data-source="Ecclesiastical Latin Dictionary"] {
+  background: var(--st-accent-gold-soft);
+  color: var(--st-accent-gold);
+}
+
+.st-dict-badge[data-source="Wiktionary"] {
+  background: rgba(25, 103, 210, 0.14);
+  color: #2563EB;
+}
+
+body.st-dark-mode .st-dict-badge[data-source="Wiktionary"] {
+  background: rgba(96, 165, 250, 0.2);
+  color: #93C5FD;
+}
+
+.st-dict-badge[data-source="Lewis & Short"] {
+  background: var(--st-accent-teal-soft);
+  color: var(--st-accent-teal);
+}
+
+.st-dict-badge[data-source="Whitaker's Words"] {
+  background: rgba(100, 116, 139, 0.16);
+  color: var(--st-text-secondary);
+}
+
+.st-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.st-popup-headword {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--st-accent-rubric);
+}
+
+.st-popup-pos {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--st-accent-teal-soft);
+  color: var(--st-accent-teal);
+}
+
+.st-popup-morph {
+  font-size: 12px;
+  color: var(--st-text-secondary);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.st-popup-context-reason {
+  font-size: 11.5px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--st-bg-elevated);
+  color: var(--st-text-secondary);
+  margin-bottom: 8px;
+}
+
+.st-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  justify-content: space-between;
+}
+
+.st-status-btn {
+  flex: 1;
+  min-height: 28px;
+  padding: 5px 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 5px;
+  border: 1px solid var(--st-border);
+  background: var(--st-bg-elevated);
+  color: var(--st-text-primary);
+  cursor: pointer;
+  text-align: center;
+}
+
+.st-status-btn.st-active {
+  background: var(--st-accent-teal);
+  color: #FFFFFF !important;
+  border-color: var(--st-accent-teal);
+}
+
+/* Docked Side Panel */
+#st-sidepanel {
+  position: fixed;
+  top: 48px;
+  right: 0;
+  bottom: 0;
+  width: 335px;
+  max-width: 46vw;
+  background: var(--st-bg-elevated);
+  border-left: 1px solid var(--st-border);
+  z-index: 2147483639;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--st-font-ui);
+  color: var(--st-text-primary);
+  box-shadow: -4px 0 18px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease;
+}
+
+body.st-panel-collapsed #st-sidepanel {
+  transform: translateX(100%);
+}
+
+.st-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--st-border);
+  background: var(--st-bg-card);
+}
+
+.st-tab {
+  padding: 10px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--st-text-secondary);
+  border-bottom: 2.5px solid transparent;
+}
+
+.st-tab.st-active {
+  color: var(--st-accent-rubric);
+  border-bottom-color: var(--st-accent-rubric);
+}
+
+.st-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+}
+
+.st-card {
+  background: var(--st-bg-card);
+  border: 1px solid var(--st-border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.st-card-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--st-accent-teal);
+  margin-bottom: 6px;
+}
+
+.st-interlinear-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.st-interlinear-item {
+  background: var(--st-bg-elevated);
+  border: 1px solid var(--st-border);
+  border-radius: 5px;
+  padding: 4px 6px;
+  font-size: 11.5px;
+  line-height: 1.25;
+}
+
+.st-interlinear-lat {
+  font-weight: 700;
+  color: var(--st-accent-rubric);
+}
+
+.st-interlinear-en {
+  color: var(--st-text-primary);
+}
+
+.st-interlinear-morph {
+  font-size: 10px;
+  color: var(--st-text-muted);
+}
+
+/* PhrasePump FSRS Modal */
+#st-phrasepump-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 20, 0.72);
+  z-index: 2147483646;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  font-family: var(--st-font-ui);
+}
+
+#st-phrasepump-modal.st-visible {
+  display: flex;
+}
+
+.st-modal-dialog {
+  width: 680px;
+  max-width: 96vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--st-bg-card);
+  color: var(--st-text-primary);
+  border: 1px solid var(--st-border);
+  border-top: 4px solid var(--st-accent-rubric);
+  border-radius: 12px;
+  box-shadow: var(--st-shadow);
+  padding: 20px 24px;
+}
+
+.st-phrasepump-progress-track {
+  width: 100%;
+  height: 5px;
+  background: var(--st-bg-elevated);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 8px 0 14px 0;
+}
+
+.st-phrasepump-progress-bar {
+  height: 100%;
+  background: var(--st-accent-rubric);
+  transition: width 0.2s ease;
+}
+
+.st-cloze-sentence {
+  font-family: var(--st-font-latin);
+  font-size: 20px;
+  line-height: 1.6;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: var(--st-bg-elevated);
+  border-left: 4px solid var(--st-accent-rubric);
+  margin: 12px 0;
+}
+
+.st-fsrs-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.st-fsrs-btn {
+  padding: 10px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--st-border);
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  font-size: 13px;
+}
+
+.st-fsrs-1 { background: rgba(204, 51, 51, 0.14); color: #A61C1C; border-color: #D96B6B; }
+.st-fsrs-2 { background: rgba(217, 130, 43, 0.14); color: #9C5708; border-color: #E09F5A; }
+.st-fsrs-3 { background: rgba(46, 139, 87, 0.14); color: #1E6B40; border-color: #63B884; }
+.st-fsrs-4 { background: rgba(36, 88, 88, 0.14); color: #194A4A; border-color: #5CA3A3; }
+
+body.st-dark-mode .st-fsrs-1 { color: #FCA5A5; }
+body.st-dark-mode .st-fsrs-2 { color: #FCD34D; }
+body.st-dark-mode .st-fsrs-3 { color: #86EFAC; }
+body.st-dark-mode .st-fsrs-4 { color: #67E8F9; }
+
+/* WCAG 2.2 AA Skip Link & Focus-Visible Outlines (DEF-010) */
+.st-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 4px;
+  z-index: 2147483647;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--st-accent-rubric-btn);
+  color: #FFFFFF !important;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.st-skip-link:focus,
+.st-skip-link:focus-visible {
+  left: 12px;
+  outline: 2px solid var(--st-accent-teal);
+  outline-offset: 2px;
+}
+
+.st-btn:focus-visible,
+.st-para-btn:focus-visible,
+.st-status-btn:focus-visible,
+.st-tab:focus-visible,
+.st-popup-icon-btn:focus-visible,
+.st-fsrs-btn:focus-visible,
+.ct-word:focus-visible {
+  outline: 2px solid var(--st-accent-teal);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.st-reader-active,
+  body.st-reader-active P[TITLE],
+  .ct-word,
+  #st-popup,
+  #st-sidepanel,
+  .st-phrasepump-progress-bar,
+  body[data-reading-mode="independent"] .st-para-bar {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+@media (max-width: 960px) {
+  body.st-reader-active {
+    padding-right: 285px !important;
+  }
+  #st-sidepanel {
+    width: 275px;
+    max-width: 38vw;
+  }
+  .st-coverage-pill {
+    max-width: 240px;
+  }
+}
+
+@media (max-width: 720px) {
+  body.st-reader-active {
+    padding-right: 16px !important;
+  }
+  #st-sidepanel {
+    width: 320px;
+    max-width: 88vw;
+    box-shadow: -8px 0 28px rgba(0, 0, 0, 0.28);
+  }
+}

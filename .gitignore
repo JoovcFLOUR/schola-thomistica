@@ -1,0 +1,15 @@
+node_modules/
+.cache_sources/
+.remember/
+.claude/
+.superpowers/
+archive/_extension/data/summa-english.json
+dist/extension/data/summa-english.json
+releases/
+*.crx
+*.pem
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store

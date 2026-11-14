@@ -1,0 +1,24 @@
+{
+  "name": "schola-thomistica",
+  "version": "1.1.0",
+  "description": "Interactive Latin-learning browser extension and offline archive for Corpus Thomisticum (Thomas Aquinas)",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --noEmit && vitest run",
+    "test:watch": "vitest",
+    "archive": "python3 scripts/archive-site.py",
+    "build:data": "python3 scripts/build-dictionaries.py",
+    "build": "node scripts/build-extension.mjs",
+    "build:lite": "node scripts/build-extension.mjs --lite",
+    "serve": "python3 scripts/serve-archive.py"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.24.0",
+    "jsdom": "^25.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}
